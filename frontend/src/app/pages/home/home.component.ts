@@ -1,9 +1,8 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Observable } from 'rxjs';
+import { Observable, BehaviorSubject, switchMap } from 'rxjs';
 import { TodoService } from '../../services/todo.service';
-
 import { Auth } from '@angular/fire/auth';
 import { Todo } from '../../services/todo.model';
 
@@ -15,45 +14,92 @@ import { Todo } from '../../services/todo.model';
   imports: [CommonModule, FormsModule],
 })
 export class HomeComponent implements OnInit {
-  private todoService = inject(TodoService);
-  private auth = inject(Auth);
+  
+  // Use constructor injection instead of inject()
+  constructor(
+    private todoService: TodoService,
+    private auth: Auth
+  ) {
+    console.log('HomeComponent constructor called');
+    console.log('TodoService:', this.todoService);
+    console.log('Auth:', this.auth);
+  }
 
-  todos$: Observable<Todo[]> = this.todoService.getTodos();
+  // Use a subject to trigger refresh
+  private refreshTrigger = new BehaviorSubject<void>(undefined);
+  
+  todos$: Observable<Todo[]> = this.refreshTrigger.pipe(
+    switchMap(() => {
+      console.log('Loading todos...');
+      return this.todoService.getTodos();
+    })
+  );
+
   // Form fields
   title = '';
   description = '';
   status: 'Active' | 'Completed' | 'Pending' = 'Active';
   priority: 'Low' | 'Medium' | 'High' = 'Low';
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    console.log('HomeComponent ngOnInit called');
+  }
 
-  async addTodo() {
+  addTodo() {
     const user = this.auth.currentUser;
-    if (!user) return alert('You must be logged in to add todos.');
+    if (!user) {
+      alert('You must be logged in to add todos.');
+      return;
+    }
 
-    if (!this.title.trim()) return alert('Title is required.');
+    if (!this.title.trim()) {
+      alert('Title is required.');
+      return;
+    }
 
-    const todo: Todo = {
+    const todo = {
       title: this.title.trim(),
       description: this.description.trim(),
       status: this.status,
       priority: this.priority,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      uid: user.uid,
-      email:""
     };
 
-    await this.todoService.addTodo(todo);
+    console.log('Adding todo:', todo);
 
-    // Clear inputs
-    this.title = '';
-    this.description = '';
-    this.status = 'Active';
-    this.priority = 'Low';
+    this.todoService.addTodo(todo).subscribe({
+      next: (result) => {
+        console.log('Todo added successfully:', result);
+        // Clear inputs
+        this.title = '';
+        this.description = '';
+        this.status = 'Active';
+        this.priority = 'Low';
+        
+        // Refresh the todo list
+        this.refreshTrigger.next();
+      },
+      error: (error) => {
+        console.error('Error adding todo:', error);
+        alert('Failed to add todo. Please try again.');
+      }
+    });
   }
 
   deleteTodo(id: string) {
-    this.todoService.deleteTodo(id);
+    if (!id) return;
+    
+    console.log('Deleting todo:', id);
+    
+    this.todoService.deleteTodo(id).subscribe({
+      next: () => {
+        console.log('Todo deleted successfully');
+        // Refresh the todo list
+        this.refreshTrigger.next();
+      },
+      error: (error) => {
+        console.error('Error deleting todo:', error);
+        alert('Failed to delete todo. Please try again.');
+      }
+    });
   }
 }
