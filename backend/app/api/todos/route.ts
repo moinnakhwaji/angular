@@ -10,14 +10,14 @@ function withCors(response: NextResponse) {
   return response;
 }
 
-// Handle preflight requests (OPTIONS)
+
 export async function OPTIONS(req: NextRequest) {
   console.log("OPTIONS request received");
   const response = new NextResponse(null, { status: 200 });
   return withCors(response);
 }
 
-// GET: Fetch todos by user email
+
 export async function GET(req: NextRequest) {
   console.log("GET request received");
 
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST: Add a new todo with user email
+
 export async function POST(req: NextRequest) {
   console.log("POST request received");
 

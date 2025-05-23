@@ -56,4 +56,14 @@ export class TodoService {
       switchMap(headers => this.http.delete(`${this.baseUrl}/${id}`, { headers }))
     );
   }
+  updateTodo(id: string, data: Partial<Todo>) {
+  return from(this.auth.currentUser?.getIdToken() ?? Promise.resolve('')).pipe(
+    switchMap(token => this.http.patch(`/api/todo/${id}`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }))
+  );
+}
+
 }
